@@ -1,7 +1,20 @@
 (function () {
     "use strict";
+
+    // SVG XML NameSpace
     var SVGXMLNS = "http://www.w3.org/2000/svg";
+
+    // Regexp for slicing class list
     var SEPWORDS = /[\n\r\t\ ]+/g;
+
+    // Synchronizing flag to allow independent loading of more than one resource
+    var synchronize = 0;
+
+    // Object holding icons definitions
+    var allIcons = null;
+
+    // Array holding SVG-style definitions
+    var allStyles = null;
 
     /* Clone and convert a DOM element into an SVG DOM
      *
@@ -36,17 +49,19 @@
             }
 
             // Copy the children
-            var children = element.children;
+            var children = element.childNodes;
             for(var i = 0; i < children.length; i++) {
                 svgElement.appendChild(cloneSVG(children[i], null));
             }
         } else if(element.nodeType == 2) { // Text element
-            svgElement = document.createTextElement(element.nodeValue);
+            svgElement = element.cloneNode(false);
         }
 
         return svgElement;
     }
 
+    /* Converts an SVG DOM into a string ready to be encoded in Base64.
+     */
     function svgToString(svg) {
         var strOut = "";
 
@@ -63,15 +78,21 @@
                         + attributes[i].value
                         + '"';
             }
-            strOut += ">";
 
-            // Copy the children
-            var children = svg.children;
-            for(var i = 0; i < children.length; i++) {
-                strOut += svgToString(children[i]);
+            if(svg.children.length > 0) {
+                strOut += ">";
+
+                // Copy the children
+                var children = svg.children;
+                for(var i = 0; i < children.length; i++) {
+                    strOut += svgToString(children[i]);
+                }
+
+                strOut += "</" + svg.tagName + ">";
+            } else {
+                // No child = no need to add an ending tag
+                strOut += "/>";
             }
-
-            strOut += "</" + svg.tagName + ">";
         } else if(svg.nodeType == 2) { // Text element
             strOut += svg.nodeValue;
         }
@@ -85,25 +106,20 @@
      * the SVG file as an XML file. The callback function will directly get
      * a DOM.
      */
-    function doWithSVG(svgURL, callback) {
+    function asynchronousLoad(url, callback) {
+        synchronize++;
+
         var xmlhttp = new XMLHttpRequest();
 
         xmlhttp.onload = function () {
             if(xmlhttp.status == 200) {
-                if (/comp|inter|loaded/.test(document.readyState)) {
-                    // The document is ready to be modified
+                whenDOMContentLoaded(function() {
                     callback(xmlhttp.responseXML);
-                } else {
-                    // The document is not ready to be modified, delay
-                    // its update
-                    document.addEventListener('DOMContentLoaded', function() {
-                        callback(xmlhttp.responseXML);
-                    }, false);
-                }
+                });
             }
         }
 
-        xmlhttp.open("GET", svgURL, true);
+        xmlhttp.open("GET", url, true);
         xmlhttp.send();
     }
 
@@ -111,110 +127,154 @@
      *
      * The function searches for svg-prepend, svg-append and svg-background
      * classes.
-     * When it found one of them, it adds the following class to its
-     * corresponding array.
      *
-     * It returns an object with 3 entries : prepend, append and background,
-     * each containing an array of icon ids.
+     * It returns an array containing actions (type, on, value).
      */
     function getActions(element) {
         var classes = element.className.replace(SEPWORDS, " ").split(" ");
-        var prepends = [];
-        var appends = [];
-        var backgrounds = [];
+        var actions = [];
         for(var i = 0; i < classes.length - 1; i++) {
             switch(classes[i]) {
                 case "svg-prepend":
-                    prepends.push(classes[i + 1]);
-                    i++;
-                    break;
                 case "svg-append":
-                    appends.push(classes[i + 1]);
-                    i++;
-                    break;
                 case "svg-background":
-                    backgrounds.push(classes[i + 1]);
+                    actions.push({
+                        type: classes[i],
+                        on: element,
+                        value: classes[i + 1]
+                    });
                     i++;
                     break;
                 default:
             }
         }
 
-        return {
-            prepend: prepends,
-            append: appends,
-            background: backgrounds
-        }
+        return actions;
     }
 
     /* Create SVG icons for one DOM element
      */
-    function createSVGIconsFor(icons, element) {
-        function doAction(specificActions, actionType, action) {
-            for(var i = 0; i < specificActions.length; i++) {
-                var id = specificActions[i];
-                var icon = icons.getElementById(id);
+    function doAction(action) {
+        if(!allIcons.hasOwnProperty(action.value)) return;
+        var icon = allIcons[action.value];
+        if(!icon) return;
 
-                if(!icon) continue;
+        var viewBox = icon.getAttribute("viewBox");
+        var svg = cloneSVG(icon, "svg");
 
-                var viewBox = icon.getAttribute("viewBox");
-                var svg = cloneSVG(icon, "svg");
+        svg.removeAttribute("id");
+        svg.setAttribute("xmlns", SVGXMLNS);
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute(
+            "class",
+            "svg-icon " + action.type + " " + action.value
+        );
 
-                svg.removeAttribute("id");
-                svg.setAttribute("xmlns", SVGXMLNS);
-                svg.setAttribute("aria-hidden", "true");
-                svg.setAttribute("class", "svg-icon " + actionType + " " + id);
+        switch(action.type) {
+            case "svg-prepend":
+                action.on.insertBefore(svg, action.on.firstChild);
+                break;
 
-                action(element, svg);
-            }
+            case "svg-append":
+                action.on.appendChild(svg);
+                break;
+
+            case "svg-background":
+                var str = svgToString(svg);
+                action.on.style.backgroundImage =
+                    "url(data:image/svg+xml;base64," + btoa(str) + ")";
+                break;
+
+            default:
         }
-
-        function actionPrepend(element, svg) {
-            element.insertBefore(svg, element.firstChild);
-        }
-
-        function actionAppend(element, svg) {
-            element.appendChild(svg);
-        }
-
-        function actionBackground(element, svg) {
-            var str = svgToString(svg);
-            element.style.backgroundImage =
-                "url(data:image/svg+xml;base64," + btoa(str) + ")";
-        }
-
-        var actions = getActions(element);
-        doAction(actions.prepend, "prepend", actionPrepend);
-        doAction(actions.append, "append", actionAppend);
-        doAction(actions.background, "background", actionBackground);
     }
 
     /* Create SVG icons for each element having a class among svg-prepend,
      * svg-append and svg-background.
      */
-    function createSVGIcons(icons) {
+    function createSVGIcons() {
+        var actions = [];
+
+        // Search for actions according to classes on DOM elements
         var elements = document.querySelectorAll(
             ".svg-prepend, .svg-append, .svg-background"
         );
 
         for(var i = 0; i < elements.length; i++) {
-            createSVGIconsFor(icons, elements[i]);
+            actions = actions.concat(getActions(elements[i]));
         }
+
+        // Search for actions according to custom stylesheet
+        var styles = allStyles.getElementsByTagName("action");
+        for(var i = 0; i < styles.length; i++) {
+            elements = document.querySelectorAll(
+                styles[i].getAttribute("selector")
+            );
+
+            for(var j = 0; j < elements.length; j++) {
+                actions.push({
+                    type: styles[i].getAttribute("type"),
+                    on: elements[j],
+                    value: styles[i].getAttribute("value")
+                });
+            }
+        }
+
+        // Apply each action found precedently
+        for(var i = 0; i < actions.length; i++) doAction(actions[i]);
     }
 
-    /* Look for the SVG URL in the meta tags
+    /* Look for a meta by its name
      *
-     * This function looks for a meta tag named "svg-icons" and returns its
+     * This function looks for a meta tag by its name and returns its
      * content. It returns null if there is none.
      */
-    function findSVGURL() {
-        var meta = document.querySelector("meta[name=svg-icons]");
+    function findMeta(name) {
+        var meta = document.querySelector("meta[name=" + name + "]");
         if(meta) return meta.getAttribute("content");
         return null;
     }
 
-    var svgURL = findSVGURL();
-    if(svgURL) {
-        doWithSVG(svgURL, function(icons) { createSVGIcons(icons); });
+    /* Run a callback when the DOMContentLoaded event is fired.
+     *
+     * If this event has already been fired, the callback is immediately called.
+     */
+    function whenDOMContentLoaded(callback) {
+        if (/comp|inter|loaded/.test(document.readyState)) {
+            // The document is ready to be modified
+            callback();
+        } else {
+            // The document is not ready to be modified, delay
+            // its update
+            document.addEventListener('DOMContentLoaded', function() {
+                callback();
+            }, false);
+        }
+    }
+
+    /* Run a callback only if all asynchronous loads have completed
+     */
+    function whenAsynchronousLoadsCompleted(callback) {
+        synchronize--;
+        if(synchronize <= 0) callback();
+    }
+
+    var svgURL = findMeta("svg-icons");
+    var styleURL = findMeta("svg-stylesheet");
+    if(svgURL && styleURL) {
+        asynchronousLoad(svgURL, function(icons) {
+            // Indexing all icons by their ID because IE9 doesn’t support
+            // getElementById on XML hierarchy
+            var symbols = icons.getElementsByTagName("symbol");
+            allIcons = [];
+            for(var i = 0; i < symbols.length; i++) {
+                allIcons[symbols[i].getAttribute("id")] = symbols[i];
+            }
+            whenAsynchronousLoadsCompleted(createSVGIcons);
+        });
+        asynchronousLoad(styleURL, function(styles) {
+            allStyles = styles;
+            whenAsynchronousLoadsCompleted(createSVGIcons);
+        });
     }
 }) ();

@@ -1,0 +1,6 @@
+<svg-icons>
+<action selector="ul.star li" type="svg-prepend" value="icon-star"/>
+<action selector="ul.star li" type="svg-append" value="icon-star"/>
+<action selector="p" type="svg-prepend" value="icon-square"/>
+<action selector="p" type="svg-background" value="icon-circle"/>
+</svg-icons>

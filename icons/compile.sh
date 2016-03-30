@@ -12,4 +12,4 @@ function compileIcons() {
     printf "</svg>"
 }
 
-compileIcons > icons.svg
+compileIcons > svg-icons.svg

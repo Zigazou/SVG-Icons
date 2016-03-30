@@ -62,15 +62,29 @@ Or visit http://ouep.eu/test/svg-icons/svg-icons.html
 Usage
 -----
 
-The `head` part of your html must contain these two lines:
+### Setup
 
-    <meta name="svg-icons" content="icons.svg">
+The `head` part of your html must contain these three lines:
+
+    <meta name="svg-icons" content="svg-icons.svg">
+    <meta name="svg-stylesheet" content="svg-icons.xml">
     <script src="svg-icons.js"></script>
 
 The first line indicates where to load icons.
-The second line loads and runs the `svg-icons` library.
+The second line indicates where to load rules to create icons.
+The third line loads and runs the `svg-icons` library.
 
-To insert an icon:
+### Two way to insert an icon
+There are two way to insert an icon. You either need:
+
+- applying class couples to element: `[svg-prepend|svg-append|svg-background]
+  <icon identifier>`
+- creating a rule in an XML file: `<action selector="ul.star li"
+  type="svg-prepend" value="icon-star"/>`
+
+### Inserting an icon using class couples
+
+For example:
 
     <p class="svg-prepend icon-star">Lorem ipsum dolor</p>
 
@@ -102,6 +116,29 @@ The SVG file containing the icons must look like this:
           4 2.37-5.75-5.32-3.28 6.24 0.47z"/>
       </symbol>
     </svg>
+
+### Inserting an icon using an XML file
+
+For example:
+
+    <svg-icons>
+      <action selector="ul.star li" type="svg-prepend" value="icon-star"/>
+      <action selector="ul.star li" type="svg-append" value="icon-star"/>
+      <action selector="p" type="svg-prepend" value="icon-square"/>
+      <action selector="p" type="svg-background" value="icon-circle"/>
+    </svg-icons>
+
+The `svg-icons` XML file works nearly like a CSS file except that actions are
+cumulative, they cannot replace other actions.
+
+The first `action` line indicates that:
+
+- the action concerns all elements that satisfy the selector (the same as for
+  CSS file) `ul.star li`,
+- an icon will be inserted (`svg-prepend`) at the beginning of the `li` tag,
+- the ID of the icon to insert is `icon-star`
+
+### Note
 
 Each icon is stored in a `symbol`. This allows to use a `viewBox` specific to
 each icon. The `icons` directory give an example of Bash script to help you
