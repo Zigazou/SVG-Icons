@@ -1,16 +1,16 @@
 (function () {
     "use strict";
-    const SVGXMLNS = "http://www.w3.org/2000/svg";
-    const SEPWORDS = /[\n\r\t ]+/g;
+    var SVGXMLNS = "http://www.w3.org/2000/svg";
+    var SEPWORDS = /[\n\r\t\ ]+/g;
 
     /* Clone and convert a DOM element into an SVG DOM
-    *
-    * Because XMLHttpRequest will return the SVG as a simple XML DOM, we need
-    * to duplicate and convert this DOM to the SVG namespace.
-    * 
-    * This function works recursively, therefore all the elements that the SVG
-    * is made of are also converted.
-    */
+     *
+     * Because XMLHttpRequest will return the SVG as a simple XML DOM, we need
+     * to duplicate and convert this DOM to the SVG namespace.
+     *
+     * This function works recursively, therefore all the elements that the SVG
+     * is made of are also converted.
+     */
     function cloneSVG(element, rename) {
         var svgElement;
 
@@ -57,7 +57,7 @@
             // Copy the attributes
             var attributes = svg.attributes;
             for(var i = 0; i < attributes.length; i++) {
-                strOut += " " 
+                strOut += " "
                         + attributes[i].name
                         + '="'
                         + attributes[i].value
@@ -80,11 +80,11 @@
     }
 
     /* Retrieve an SVG file and call a user function on it.
-    * 
-    * This function uses the fact that XMLHttpRequest will automatically parse
-    * the SVG file as an XML file. The callback function will directly get
-    * a DOM.
-    */
+     *
+     * This function uses the fact that XMLHttpRequest will automatically parse
+     * the SVG file as an XML file. The callback function will directly get
+     * a DOM.
+     */
     function doWithSVG(svgURL, callback) {
         var xmlhttp = new XMLHttpRequest();
 
@@ -108,20 +108,20 @@
     }
 
     /* Given an element, returns all the actions the SVG-Icons library has to do
-    *
-    * The function searches for svg-prepend, svg-append and svg-background
-    * classes.
-    * When it found one of them, it adds the following class to its
-    * corresponding array.
-    *
-    * It returns an object with 3 entries : prepend, append and background, each
-    * containing an array of icon ids.
-    */
+     *
+     * The function searches for svg-prepend, svg-append and svg-background
+     * classes.
+     * When it found one of them, it adds the following class to its
+     * corresponding array.
+     *
+     * It returns an object with 3 entries : prepend, append and background,
+     * each containing an array of icon ids.
+     */
     function getActions(element) {
-        var classes = element.className.replace(SEPWORDS, " ").split(" "),
-            prepends = [],
-            appends = [],
-            backgrounds = [];
+        var classes = element.className.replace(SEPWORDS, " ").split(" ");
+        var prepends = [];
+        var appends = [];
+        var backgrounds = [];
         for(var i = 0; i < classes.length - 1; i++) {
             switch(classes[i]) {
                 case "svg-prepend":
@@ -148,17 +148,17 @@
     }
 
     /* Create SVG icons for one DOM element
-    */
+     */
     function createSVGIconsFor(icons, element) {
         function doAction(specificActions, actionType, action) {
             for(var i = 0; i < specificActions.length; i++) {
-                var id = specificActions[i],
-                    icon = icons.getElementById(id);
+                var id = specificActions[i];
+                var icon = icons.getElementById(id);
 
                 if(!icon) continue;
 
-                var viewBox = icon.getAttribute("viewBox"),
-                    svg = cloneSVG(icon, "svg");
+                var viewBox = icon.getAttribute("viewBox");
+                var svg = cloneSVG(icon, "svg");
 
                 svg.removeAttribute("id");
                 svg.setAttribute("xmlns", SVGXMLNS);
@@ -190,8 +190,8 @@
     }
 
     /* Create SVG icons for each element having a class among svg-prepend,
-    * svg-append and svg-background.
-    */
+     * svg-append and svg-background.
+     */
     function createSVGIcons(icons) {
         var elements = document.querySelectorAll(
             ".svg-prepend, .svg-append, .svg-background"
@@ -203,10 +203,10 @@
     }
 
     /* Look for the SVG URL in the meta tags
-    *
-    * This function looks for a meta tag named "svg-icons" and returns its
-    * content. It returns null if there is none.
-    */
+     *
+     * This function looks for a meta tag named "svg-icons" and returns its
+     * content. It returns null if there is none.
+     */
     function findSVGURL() {
         var meta = document.querySelector("meta[name=svg-icons]");
         if(meta) return meta.getAttribute("content");
