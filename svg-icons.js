@@ -1,4 +1,5 @@
 (function () {
+    "use strict";
     const SVGXMLNS = "http://www.w3.org/2000/svg";
     const SEPWORDS = /[\n\r\t ]+/g;
 
@@ -27,7 +28,7 @@
 
             // Copy the attributes
             var attributes = element.attributes;
-            for(i = 0; i < attributes.length; i++) {
+            for(var i = 0; i < attributes.length; i++) {
                 svgElement.setAttribute(
                     attributes[i].name,
                     attributes[i].value
@@ -36,7 +37,7 @@
 
             // Copy the children
             var children = element.children;
-            for(i = 0; i < children.length; i++) {
+            for(var i = 0; i < children.length; i++) {
                 svgElement.appendChild(cloneSVG(children[i], null));
             }
         } else if(element.nodeType == 2) { // Text element
@@ -55,7 +56,7 @@
 
             // Copy the attributes
             var attributes = svg.attributes;
-            for(i = 0; i < attributes.length; i++) {
+            for(var i = 0; i < attributes.length; i++) {
                 strOut += " " 
                         + attributes[i].name
                         + '="'
@@ -66,7 +67,7 @@
 
             // Copy the children
             var children = svg.children;
-            for(i = 0; i < children.length; i++) {
+            for(var i = 0; i < children.length; i++) {
                 strOut += svgToString(children[i]);
             }
 
@@ -177,7 +178,7 @@
         }
 
         function actionBackground(element, svg) {
-            str = svgToString(svg);
+            var str = svgToString(svg);
             element.style.backgroundImage =
                 "url(data:image/svg+xml;base64," + btoa(str) + ")";
         }
