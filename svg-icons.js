@@ -182,7 +182,7 @@
             case "svg-background":
                 var str = svgToString(svg);
                 action.on.style.backgroundImage =
-                    "url(data:image/svg+xml;base64," + btoa(str) + ")";
+                    "url(data:image/svg+xml," + encodeURI(str) + ")";
                 break;
 
             default:
