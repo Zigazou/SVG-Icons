@@ -16,6 +16,14 @@
     // Array holding SVG-style definitions
     var allStyles = null;
 
+    // Counter to generate auto ID
+    var autoID = 0;
+
+    // Custom stylesheet
+    var customStylesheet = document.createElement("style");
+    document.head.appendChild(customStylesheet);
+    var customStyles = customStylesheet.sheet;
+
     /* Clone and convert a DOM element into an SVG DOM
      *
      * Because XMLHttpRequest will return the SVG as a simple XML DOM, we need
@@ -138,7 +146,10 @@
                 case "svg-prepend":
                 case "svg-append":
                 case "svg-background":
+                case "svg-backafter":
+                case "svg-backbefore":
                     actions.push({
+                        sel: null,
                         type: classes[i],
                         on: element,
                         value: classes[i + 1]
@@ -150,6 +161,13 @@
         }
 
         return actions;
+    }
+
+    /* Create a CSS rule
+     */
+    function createCSSRule(selector, property, value) {
+        var rule = selector + "{" + property + ":" + value + ";}";
+        customStyles.insertRule(rule, 0);
     }
 
     /* Create SVG icons for one DOM element
@@ -181,8 +199,28 @@
 
             case "svg-background":
                 var str = svgToString(svg);
-                action.on.style.backgroundImage =
-                    "url(data:image/svg+xml," + encodeURI(str) + ")";
+                var uri = "url(data:image/svg+xml," + encodeURI(str) + ")";
+                action.on.style.backgroundImage = uri;
+                break;
+
+            case "svg-backafter":
+                var str = svgToString(svg);
+                var uri = "url(data:image/svg+xml," + encodeURI(str) + ")";
+                createCSSRule(
+                        action.sel + '::after',
+                        "background-image",
+                        uri
+                );
+                break;
+
+            case "svg-backbefore":
+                var str = svgToString(svg);
+                var uri = "url(data:image/svg+xml," + encodeURI(str) + ")";
+                createCSSRule(
+                        action.sel + '::before',
+                        "background-image",
+                        uri
+                );
                 break;
 
             default:
@@ -207,16 +245,34 @@
         // Search for actions according to custom stylesheet
         var styles = allStyles.getElementsByTagName("action");
         for(var i = 0; i < styles.length; i++) {
-            elements = document.querySelectorAll(
-                styles[i].getAttribute("selector")
-            );
+            var selector = styles[i].getAttribute("selector");
+            var type = styles[i].getAttribute("type");
+            var value = styles[i].getAttribute("value");
 
-            for(var j = 0; j < elements.length; j++) {
-                actions.push({
-                    type: styles[i].getAttribute("type"),
-                    on: elements[j],
-                    value: styles[i].getAttribute("value")
-                });
+            switch(type) {
+                case "svg-backafter":
+                case "svg-backbefore":
+                    // These will generate CSS rules, no need to create a
+                    // rule for each elements, the browser will handle it
+                    actions.push({
+                        sel: selector,
+                        type: type,
+                        on: null,
+                        value: value
+                    });
+                    break;
+                default:
+                    // Generate an SVG for each element pointed to by the rule
+                    elements = document.querySelectorAll(selector);
+
+                    for(var j = 0; j < elements.length; j++) {
+                        actions.push({
+                            sel: selector,
+                            type: type,
+                            on: elements[j],
+                            value: value
+                        });
+                    }
             }
         }
 
